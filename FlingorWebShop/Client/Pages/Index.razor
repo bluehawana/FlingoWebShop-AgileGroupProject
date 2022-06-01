@@ -1,0 +1,172 @@
+﻿@page "/"
+@using FlingorWebShop.Shared
+@using FlingorWebShop.Client.DAL
+@using System.Text
+@using System.Globalization
+@inject HttpClient _httpClient
+@inject CartManager _cartManager;
+
+
+<PageTitle>Products</PageTitle>
+
+<div class="btn-toolbar mb-3 separator" role="toolbar" aria-label="Toolbar with button groups">
+        <div class="btn-group" role="group" aria-label="First group">
+        <button type="button" class="btn btn-outline-success" @onclick="() =>GetByType(Types.Game)">Games</button>
+        <button type="button" class="btn btn-outline-success mx-1" @onclick="() =>GetByType(Types.Accessory)">Accessories</button>
+            </div>
+        <div class="input-group">
+            <input type="text" @bind="_searchedProduct" class="form-control" placeholder="Search product..." aria-label="Input group example" aria-describedby="btnGroupAddon">
+            <button type="button" class="btn btn-primary" @onclick="GetByName">Search</button>
+        </div>
+
+    </div>
+    <div class="btn-toolbar mb-3 separator" role="toolbar" aria-label="Toolbar with button groups">
+    <div class="btn-group me-2" role="group" aria-label="First group">
+        <button type="button" class="btn btn-outline-secondary" @onclick="() =>GetAllProductsAsync()">All</button>
+        <button type="button" class="btn btn-outline-secondary mx-1" @onclick="() =>GetGamesByGenre(Genre.Action)">Action</button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="() =>GetGamesByGenre(Genre.Shooter)">Shooter</button>
+        <button type="button" class="btn btn-outline-secondary mx-1" @onclick="() =>GetGamesByGenre(Genre.Adventure)">Adventure</button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="() =>GetGamesByGenre(Genre.Strategy)">Strategy</button>
+        <button type="button" class="btn btn-outline-secondary mx-1" @onclick="() =>GetGamesByGenre(Genre.RolePlaying)">Role Playing</button>
+    </div>
+        <div class="input-group">
+        <div class="input-group-text" id="btnGroupAddon2">Price:</div>
+        <input class="form-control" size="5" @bind="_priceFrom" type="text" />
+        <div class="input-group-text" id="btnGroupAddon2"> - </div>
+        <input class="form-control" size="5" @bind="_priceTo" type="text" placeholder="Price to" />
+        <button type="button" class="btn btn-primary" @onclick="GetByPrice">Filter</button>
+    </div>
+</div>
+
+<div class="btn-toolbar mb-3" role="toolbar" aria-label="Toolbar with button groups">
+    <div class="btn-group" role="group" aria-label="First group">
+        <div class="input-group-text" id="btnGroupAddon2">PEGI classification: </div>
+        <button type="button" class="btn btn-success" @onclick="() =>GetByAgeRating(AgeRating.PEGI_3)">3</button>
+        <button type="button" class="btn btn-success mx-1" @onclick="() =>GetByAgeRating(AgeRating.PEGI_7)">7</button>
+        <button type="button" class="btn btn-warning" @onclick="() =>GetByAgeRating(AgeRating.PEGI_12)">12</button>
+        <button type="button" class="btn btn-warning mx-1" @onclick="() =>GetByAgeRating(AgeRating.PEGI_16)">16</button>
+        <button type="button" class="btn btn-danger" @onclick="() =>GetByAgeRating(AgeRating.PEGI_18)">18</button>
+        <button type="button" class="btn btn-info mx-1" @onclick="() =>GetByAgeRating(AgeRating.PEGI_PGR)">PGR</button>
+    </div>
+</div>
+
+(@_filteredproducts.Count())
+
+<div class="card-container">
+    @foreach (var product in _filteredproducts)
+    {
+        <div class="card card-background card-radius card-border card-margin" style="width: 18rem;">
+            <a href="details/@product.Id">
+                <div class="gradient-stuff card-img-radius"
+                    style="background-image: linear-gradient(rgba(0, 0, 0, 0) 65%, rgb(47, 23, 76, 1)), url(@GetProductImgPath(product));">
+                </div>
+            </a>
+                <div class="card-body align-to-bot">
+                    <a href="details/@product.Id">
+                        <h5 class="card-title">@product.Title</h5>
+                    </a>
+                    <p class="card-text">@product.Price SEK inkl. moms</p>
+                    <p class="card-text">@product.Publisher</p>
+                </div>
+                <button class="btn btn-secondary buy-shit" @onclick="() => _cartManager.AddToCart(product)">Add to cart</button>
+        </div>
+        @*break;*@
+    }
+</div>
+
+@*<div class="card-container">
+    @foreach (var product in _filteredproducts)
+    {
+        <div class="card card-background card-radius card-border card-margin" style="width: 18rem;">
+            <div class="gradient-stuff card-img-radius"
+                style="background-image: linear-gradient(rgba(0, 0, 0, 0) 65%, rgb(47, 23, 76, 1)), url(@GetProductImgPath(product));">
+            </div>
+            <div class="card-body align-to-bot">
+                <h5 class="card-title">@product.Title</h5>
+                <p class="card-text">@product.Price</p>
+                <p class="card-text">@product.AgeRating</p>
+                <div class="card-separator">
+                    <button class="btn btn-secondary buy-shit" @onclick="() => _cartManager.AddToCart(product)">Add to cart</button>
+                    <a href="details/@product.Id" class="btn btn-primary">Details</a>
+                </div>
+            </div>
+        </div>
+    }
+</div>*@
+
+@code {
+    private int _priceFrom { get; set; }
+    private int _priceTo { get; set; }
+    private string? _searchedProduct { get; set; }
+    private string? _coverImg { get; set; }
+
+    private IEnumerable<Product> _products = new List<Product>();
+
+    private IEnumerable<Product> _filteredproducts = new List<Product>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetAllProductsAsync();
+    }
+
+    private async Task GetAllProductsAsync()
+    {
+        var result = await _httpClient.GetFromJsonAsync<ICollection<Product>>("api/Product");
+        ResetPriceRange();
+        _products = result is null ? new List<Product>() : result;
+        _filteredproducts = _products;
+        StateHasChanged();
+    }
+
+    private void GetGamesByGenre(Genre genre)
+    {
+        _filteredproducts = _products.Where(s => s.Genre == genre);
+        ResetPriceRange();
+        StateHasChanged();
+    }
+
+    private void GetByPrice()
+    {
+        _filteredproducts = _products.Where(s => s.Price < _priceTo && s.Price > _priceFrom);
+    }
+
+    private void GetByName()
+    {
+        if (_searchedProduct == null) return;
+        _filteredproducts = _products.Where(s => s.Title.ToLower().Contains(_searchedProduct.ToLower()));
+    }
+
+    private void GetByType(Types type)
+    {
+        _filteredproducts = _products.Where(s => s.Type == type);
+    }
+
+
+    private void GetByAgeRating(AgeRating ageRating)
+    {
+        _filteredproducts = _products.Where(s => s.AgeRating == ageRating);
+    }
+
+    private string GetProductImgPath(Product product)
+    {
+        if (product.Type == Types.Game)
+        {
+            return $"/Images/Games/Cover/{product.Id}.jpg";
+        }
+        
+
+        if (product.Type == Types.Accessory)
+        {
+            return $"/Images/Accessories/{product.Id}.jpg";
+        }
+        return "";
+
+    }
+
+
+    private void ResetPriceRange()
+    {
+        _priceFrom = 0;
+        _priceTo = 0;
+    }
+}

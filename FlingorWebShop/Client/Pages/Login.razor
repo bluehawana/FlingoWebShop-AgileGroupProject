@@ -1,0 +1,75 @@
+﻿@page "/login"
+@using Microsoft.EntityFrameworkCore.ValueGeneration
+@using System.Net
+@inject HttpClient _httpClient;
+@inject UserManager _userManager;
+@inject AuthenticationStateProvider _authStateProvider;
+@inject ILocalStorageService _localStorage;
+
+<Modal Title="Login successful" IsOpened="_loginSuccess">
+	<ModalBody>
+		@if(_userManager.LoggedInUser is not null)
+		{
+			<h2>Hej @_userManager.LoggedInUser.FirstName!</h2>
+		}
+	</ModalBody>
+	<ModalFooter>
+		<a class="btn btn-secondary" href="">Go to shop</a>
+	</ModalFooter>
+</Modal>
+
+@*AuthorizedView only shows the content that's inside to users with roles.*@
+
+<EditForm Model="user" OnSubmit="HandleLoginAsync" Context="editContext">
+    <label for="username">Email</label>
+    <InputText id="username" @bind-Value="user.Email" type="email"></InputText>
+
+    <label for="password">Password</label>
+    <InputText id="password" @bind-Value="user.Password" type="password"></InputText>
+
+    <button type="submit" class="btn btn-primary">Login</button>
+</EditForm>
+<label class="text-danger">@_errorMessage</label>
+
+
+@code {
+    UserDto user = new UserDto();
+    private bool _loginSuccess;
+
+    private string _errorMessage = string.Empty;
+
+    async Task HandleLoginAsync()
+    {
+        User existingUser;
+        //This try only catches an error if there is no user with the specified user.Email in the database.
+        try
+        {
+            existingUser = await _httpClient.GetFromJsonAsync<User?>($"api/user/find/{user.Email}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            _errorMessage = "Wrong email or password.";
+            return;
+        }
+
+        var result = await _httpClient.PostAsJsonAsync("api/auth/login", user);
+
+        if (result.IsSuccessStatusCode)
+        {
+            _loginSuccess = true;
+            _userManager.SetUser(existingUser);
+            _userManager.CheckLoggedInUser();
+            var token = await result.Content.ReadAsStringAsync();
+            await _localStorage.SetItemAsync("token", token);
+
+            _errorMessage = string.Empty;
+        }
+        else
+        {
+            _errorMessage = "Wrong email or password.";
+        }
+
+        await _authStateProvider.GetAuthenticationStateAsync();
+    }
+}

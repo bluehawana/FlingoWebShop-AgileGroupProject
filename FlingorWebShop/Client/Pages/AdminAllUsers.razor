@@ -1,0 +1,54 @@
+﻿@page "/adminallusers"
+@using FlingorWebShop.Shared
+@using FlingorWebShop.Client.DAL
+@inject HttpClient _httpClient
+
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Customers</PageTitle>
+
+<h1>Customers</h1>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>UserId</th>
+            <th>Email</th>
+            <th>Name</th>
+            <th>Operations</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var user in _users)
+        {
+            @if (!user.IsAdmin)
+            {
+                <tr>
+                <td class="col-4">@user.Id</td>
+                <td class="col-1">@user.Email</td>
+                <td class="col-1">@user.FirstName @user.LastName</td>
+                <td class="col-3">
+                    <a class="btn btn-primary mt-1 w-100" href="customer-orders/@user.Id">See Orders</a>
+                </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+@code {
+
+    private IEnumerable<User> _users = new List<User>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetAllUsersAsync();
+    }
+
+    private async Task GetAllUsersAsync()
+    {
+        var result = await _httpClient.GetFromJsonAsync<ICollection<User>>("api/User");
+        _users = result is null ? new List<User>() : result;
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,60 @@
+﻿@page "/orders"
+@using System.Globalization
+@inject UserManager _userManager;
+@inject HttpClient _httpClient;
+
+@attribute [Authorize]
+
+<h3>Orders</h3>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Order Date</th>
+            <th>Total Price</th>
+            <th>Address</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var order in _orderList)
+        {
+            <tr>
+                <td class="col-1">@order.Id</td>
+                <td class="col-2">@order.OrderDate.ToShortDateString()</td>
+                <td class="col-2">@order.Total.ToString("c", CultureInfo.GetCultureInfo("sv-SE"))</td>
+                <td class="col-7">@order.StreetName @order.StreetNumber, @order.PostalCode, @order.City, @order.Country</td>                
+                <td>
+                    <NavLink class="nav-link" href="privacy">
+                        <a class="btn btn-primary mt-1 w-100" href="orderdetail/@order.Id">Details</a>
+                    </NavLink>
+
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private User? _loggedInUser;
+    private IEnumerable<Order> _orderList { get; set; } = new List<Order>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        GetUser();
+        await GetAllOrdersAsync();
+        StateHasChanged();
+    }
+
+    private void GetUser()
+    {
+        _loggedInUser = _userManager.GetUser();
+    }
+
+    private async Task GetAllOrdersAsync()
+    {
+        var result = await _httpClient.GetFromJsonAsync<ICollection<Order>>("api/Order");
+        _orderList = result is null ? new List<Order>() : result.Where(s => s.UserId == _loggedInUser?.Id);
+    }
+}

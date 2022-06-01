@@ -1,0 +1,105 @@
+﻿@using FlingorWebShop.Client.DAL
+@inject CartManager _cartManager
+@inject UserManager _userManager
+
+@attribute [Authorize(Roles = "Admin")]
+
+<nav class="navbar ps-3 navbar-dark bg-primary fixed-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">Munkebäck Gaming</a>
+        <button class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+
+<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+    <nav class="make-row">
+        <div class="nav-item">
+            <NavLink class="nav-link" href="cart">
+                Cart (@counter)
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <AuthorizeView>
+                <NotAuthorized>
+                    <NavLink class="nav-link" href="register">
+                        Register
+                    </NavLink>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+        <div class="nav-item">
+            <AuthorizeView Roles="User">
+                <Authorized>
+                    <NavLink class="nav-link" href="orders">
+                        Orders
+                    </NavLink>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <div class="nav-item">
+                    <NavLink class="nav-link" href="adminallusers">
+                    All Users
+                </NavLink>
+                </div>
+
+                <div class="nav-item">
+                    <NavLink class="nav-link" href="activecarts">
+                    Active Carts
+                </NavLink>
+                </div>
+
+            </Authorized>
+        </AuthorizeView>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="privacy">
+                Privacy
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <LoginLogoutButton></LoginLogoutButton>
+        </div>
+
+    </nav>
+    </div>
+
+</div>
+    </nav>
+
+@code {
+
+    private int counter = 0;
+	private bool _isLoggedIn;
+
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+	protected override void OnInitialized()
+	{
+		_cartManager.CartContentUpdated += (sender, args) => UpdateCounter();
+		_userManager.LoggedInUserUpdated += (sender, args) => HideLogin();
+	} 
+
+    private void UpdateCounter()
+    {
+        counter = _cartManager.GetCartAmount();
+
+        // This is needed in order to re-render the component!
+        StateHasChanged();
+    }
+
+	private void HideLogin()
+	{
+		_isLoggedIn = true;
+        StateHasChanged();
+	}
+
+}

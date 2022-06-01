@@ -1,0 +1,64 @@
+﻿@page "/details/{Id}"
+@using FlingorWebShop.Shared
+@using FlingorWebShop.Client.DAL
+@inject HttpClient _httpClient
+@inject CartManager _cartManager;
+
+<!-- product -->
+    <div class="content-container">
+        <div class="content-column-img">
+            <img src="@GetProductImgPath(_product)">
+        </div>
+        <div class="content-column-text">
+            <h3>@_product.Title</h3>
+            <p>Artnr: @_product.ArticleNumber</p>
+            <p>Genre: @_product.Genre</p>
+            <p>Age Rating: @_product.AgeRating</p>
+            <p>Release Date: @_product.ReleaseDate.ToShortDateString()</p>
+            <p>Publisher: @_product.Publisher</p>
+        </div>
+        <div class="content-column-buy">
+            <h3>@_product.Price SEK</h3>
+            <button class="btn btn-secondary" @onclick="()=> _cartManager.AddToCart(_product)">Add to cart</button>
+            <hr>
+            <p>Stock: @_product.AmountInStock unit(s)</p>
+            <p>Delivered in 3 days!</p>
+        </div>
+    </div>
+    <!-- end product -->
+
+
+@code {
+    [Parameter]
+    public string Id { get; set; }
+
+    private Product _product = new Product();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetProductAsync();
+    }
+
+    private async Task GetProductAsync()
+    {
+        var result = await _httpClient.GetFromJsonAsync<Product>($"api/Product/{Id}");
+        _product = result is null ? new Product() : result;
+    }
+
+    private string GetProductImgPath(Product product)
+    {
+        if (product.Type == Types.Game)
+        {
+            return $"/Images/Games/Cover/{product.Id}.jpg";
+        }
+        
+
+        if (product.Type == Types.Accessory)
+        {
+            return $"/Images/Accessories/{product.Id}.jpg";
+        }
+        return "";
+
+    }
+
+}

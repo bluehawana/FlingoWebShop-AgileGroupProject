@@ -1,0 +1,233 @@
+﻿@page "/cart"
+
+@using FlingorWebShop.Client.DAL
+@using FlingorWebShop.Shared
+@using Microsoft.Extensions.FileProviders
+@using System.ComponentModel.DataAnnotations
+@using System.Globalization
+@inject CartManager _cartManager;
+@inject UserManager _userManager;
+@inject HttpClient _httpClient;
+
+@attribute [Authorize]
+
+<Modal Title="Payment successful" IsOpened="_isModalOpened">
+    <ModalBody>
+        <h2>Thank you for your purchase!</h2>
+    </ModalBody>
+    <ModalFooter>
+        <a class="btn btn-secondary" href="">Back to shop</a>
+    </ModalFooter>
+</Modal>
+<AuthorizeView>
+    <NotAuthorized>
+        <h3>Cart</h3>
+    </NotAuthorized>
+    <Authorized>
+        <h3>@context.User.Identity.Name's Cart</h3>
+    </Authorized>
+</AuthorizeView>
+
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th class="col-1">Artnr</th>
+            <th class="col-6">Title</th>
+            <th class="col-1">Price</th>
+            <th class="col-2">Amount</th>
+            <th class="col-2">Total</th>
+            <th class="col-2"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var product in _cart)
+        {
+            <tr>
+                <td>@product.Key.ArticleNumber</td>
+                <td>@product.Key.Title</td>
+                <td>@product.Key.Price.ToString("c", CultureInfo.GetCultureInfo("sv-SE"))</td>
+                <td>
+                    <button class="btn btn-danger" @onclick="() => RemoveProduct(product.Key.Id, product.Value)">-</button>
+                    @product.Value
+                    <button class="btn btn-success" @onclick="() => AddProduct(product.Key)">+</button>
+                </td>
+                <td>
+                    @((product.Key.Price * product.Value).ToString("c", CultureInfo.GetCultureInfo("sv-SE")))
+                </td>
+                <td>
+                    <button class="btn btn-danger" @onclick="() => RemoveAllOfOneProduct(product.Key.Id, product.Value)">X</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+<button class="btn btn-danger" @onclick="() => EmptyCart()">Empty Cart</button>
+
+<p>Total price: @_cartTotal.ToString("c", CultureInfo.GetCultureInfo("sv-SE"))</p>
+<hr />
+
+<form class="row g-3 pt-4" @onsubmit="() => CheckOutCart()">
+    <div class="row">
+        <div class="form-group col-6">
+            <label class="form-label" for="FirstName">First Name</label>
+            <input class="form-control" placeholder="First Name" type="text" name="FirstName" required 
+                   @bind="@_user.FirstName"/>
+        </div>
+        <div class="form-group col-6">
+            <label class="form-label" for="LastName">Last name</label>
+            <input class="form-control" placeholder="Last Name" type="text" name="LastName" required 
+                   @bind="@_user.LastName"/>
+        </div>
+    </div>
+    <div class="row">
+    <div class="form-group col-6">
+        <label for="StreetName">Street name</label>
+        <input class="form-control" placeholder="Main Street" type="text" name="StreetName" required 
+               @bind="@_user.StreetName"/>
+    </div>
+
+    <div class="form-group col-6">
+        <label for="StreetNumber">Street number</label>
+        <input class="form-control" placeholder="5" type="text" name="StreetNumber" required 
+               @bind="@_user.StreetNumber"/>
+    </div>
+    </div>
+    <div class="row">
+    <div class="form-group col-6">
+        <label for="City">City</label>
+        <input class="form-control" placeholder="New York" type="text" name="City" required 
+               @bind="@_user.City"/>
+    </div>
+
+    <div class="form-group col-6">
+        <label for="State">State</label>
+        <input class="form-control" placeholder="*optional*" type="text" name="State" 
+               @bind="@_user.State"/>
+    </div>
+    </div>
+    <div class="row">
+    <div class="form-group col-6">
+        <label for="PostalCode">Postal code</label>
+        <input class="form-control" placeholder="12345" type="text" name="PostalCode" required 
+               @bind="@_user.PostalCode"/>
+    </div>
+
+    <div class="form-group col-6">
+        <label for="Country">Country</label>
+        <input class="form-control" placeholder="USA" type="text" name="Country" required 
+               @bind="@_user.Country"/>
+    </div>
+    </div>
+    <div class="row">
+        <div class="form-group col-6">
+            <label for="Phone">Phone</label>
+            <input class="form-control" placeholder="+46123456789" type="text" name="Phone" required 
+                   @bind="@_user.Phone"/>
+        </div>
+
+        <div class="form-group col-6">
+            <label for="Email">Email</label>
+            <input class="form-control" placeholder="firstname.lastname@domain.com" type="email" name="Email" required 
+                   @bind="@_user.Email"/>
+        </div>
+    </div>
+    <button class="btn btn-primary mt-2">Submit</button>
+</form>
+
+@code {
+    private Dictionary<Product, int> _cart;
+
+    private decimal _cartTotal = 0;
+
+    private string _message = "";
+
+    private bool _isModalOpened;
+
+    private User _user = new User();
+
+    protected override async Task OnInitializedAsync()
+    {
+        GetCart();
+        //Store LoggedInUser as _user if someone is logged in
+        if (_userManager.LoggedInUser is not null)
+        {
+            _user = _userManager.LoggedInUser;
+        }
+    }
+
+    private void GetCart()
+    {
+        _cart = _cartManager.GetCartContent();
+        _cartTotal = _cartManager.GetCartTotal();
+    }
+
+    private void RemoveProduct(int id, int amount)
+    {
+        if (amount == 1)
+        {
+            return;
+        }
+        _cartManager.RemoveFromCart(id);
+        _cart = _cartManager.GetCartContent();
+        _cartTotal = _cartManager.GetCartTotal();
+    }
+
+    private void AddProduct(Product product)
+    {
+        _cartManager.AddToCart(product);
+        _cart = _cartManager.GetCartContent();
+        _cartTotal = _cartManager.GetCartTotal();
+    }
+
+    private void RemoveAllOfOneProduct(int id, int amount)
+    {
+        _cartManager.RemoveFromCart(id, amount);
+        _cart = _cartManager.GetCartContent();
+        _cartTotal = _cartManager.GetCartTotal();
+    }
+
+    private async Task CheckOutCart()
+    {
+        var order = new Order();
+        order.OrderDetails = new List<OrderDetail>();
+        foreach (var prod in _cart)
+        {
+            var orderDetail = new OrderDetail();
+            //orderDetail.OrderId = order.Id;
+            orderDetail.UserId = _user.Id;
+            orderDetail.ProductId = prod.Key.Id;
+            orderDetail.Quantity = prod.Value;
+            orderDetail.UnitPrice = prod.Key.Price;
+            order.OrderDetails.Add(orderDetail);
+        }
+
+        order.OrderDate = DateTime.Now;
+        order.UserId = _user.Id;
+        order.FirstName = _user.FirstName;
+        order.LastName = _user.LastName;
+        order.StreetName = _user.StreetName;
+        order.StreetNumber = _user.StreetNumber;
+        order.City = _user.City;
+        order.State = _user.State;
+        order.PostalCode = _user.PostalCode;
+        order.Country = _user.Country;
+        order.Phone = _user.Phone;
+        order.Email = _user.Email;
+        order.PaymentTransactionId = Guid.NewGuid().ToString();
+        order.HasBeenShipped = false;
+        order.Total = _cartTotal;
+
+        var result = await _httpClient.PostAsJsonAsync("api/Order", order);
+        _cartManager.ClearCart();
+        _message = "Thank you for shopping at FlingorWebShop.";
+        GetCart();
+        _isModalOpened = true;
+    }
+
+    private void EmptyCart()
+    {
+        _cartManager.ClearCart();
+        GetCart();
+    }
+}

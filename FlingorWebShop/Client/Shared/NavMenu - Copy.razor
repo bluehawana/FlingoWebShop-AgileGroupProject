@@ -1,0 +1,103 @@
+﻿@using FlingorWebShop.Client.DAL
+@inject CartManager _cartManager
+@inject UserManager _userManager
+
+@attribute [Authorize(Roles = "Admin")]
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">FlingorWebShop</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="oi oi-home" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="privacy">
+                <span class="oi oi-document" aria-hidden="true"></span> Privacy
+            </NavLink>
+        </div>
+        <AuthorizeView>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="register">
+                        <span class="oi oi-person" aria-hidden="true"></span> Register
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+        
+        <AuthorizeView Roles="User">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="orders">
+                        <span class="oi oi-document" aria-hidden="true"></span> Orders
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="cart">
+                        <span class="oi oi-cart" aria-hidden="true"></span> Cart (@counter)
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+        
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="adminallusers">
+                        <span class="oi oi-list" aria-hidden="true"></span> All Users
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+        
+        <div class="nav-item px-3">
+            <LoginLogoutButton></LoginLogoutButton>
+        </div>
+    </nav>
+</div>
+
+@code {
+
+    private int counter = 0;
+	private bool _isLoggedIn;
+
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+	protected override void OnInitialized()
+	{
+		_cartManager.CartContentUpdated += (sender, args) => UpdateCounter();
+		_userManager.LoggedInUserUpdated += (sender, args) => HideLogin();
+	} 
+
+    private void UpdateCounter()
+    {
+        counter = _cartManager.GetCartAmount();
+
+        // This is needed in order to re-render the component!
+        StateHasChanged();
+    }
+
+	private void HideLogin()
+	{
+		_isLoggedIn = true;
+        StateHasChanged();
+	}
+
+}

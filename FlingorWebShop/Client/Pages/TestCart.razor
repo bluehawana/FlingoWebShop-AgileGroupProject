@@ -1,0 +1,82 @@
+﻿@page "/testcart"
+
+@using FlingorWebShop.Client.DAL
+@using FlingorWebShop.Shared
+@inject CartManager _cartManager;
+@inject HttpClient _httpClient;
+
+<h3>Test Cart</h3>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>ProductId</th>
+            <th>Title</th>
+            <th>Price</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var product in _products)
+       {
+           <tr>
+               <td>@product.Id</td>
+               <td>@product.Title</td>
+               <td>@product.Price</td>
+               <td>
+                   <button class="btn btn-primary" @onclick="()=> _cartManager.AddToCart(product)">
+                       Add to cart
+                   </button>
+               </td>
+           </tr>
+       }
+    </tbody>
+</table>
+
+<h3>The Cart</h3>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>ProductId</th>
+            <th>Title</th>
+            <th>Price</th>
+            <th>Amount</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var product in _cart)
+       {
+           <tr>
+               <td>@product.Key.Id</td>
+               <td>@product.Key.Title</td>
+               <td>@product.Key.Price</td>
+               <td>@product.Value</td>
+           </tr>
+       }
+    </tbody>
+</table>
+
+@code {
+    private ICollection<Product> _products = new List<Product>();
+
+    private Dictionary<Product, int> _cart = new Dictionary<Product, int>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetAllProductsAsync();
+        GetCart();
+    }
+
+    private async Task GetAllProductsAsync()
+    {
+        var result = await _httpClient.GetFromJsonAsync<ICollection<Product>>("api/Product");
+
+        _products = result is null ? new List<Product>() : result;
+    }
+
+    private void GetCart()
+    {
+        _cart = _cartManager.GetCartContent();
+    }
+}

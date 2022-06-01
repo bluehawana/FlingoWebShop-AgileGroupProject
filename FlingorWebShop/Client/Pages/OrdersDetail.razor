@@ -1,0 +1,56 @@
+﻿@page "/orderdetail/{id}"
+@inject UserManager _userManager;
+@inject HttpClient _httpClient;
+
+@attribute [Authorize]
+
+<h3>Details for order: @Id</h3>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Product Id</th>
+            <th>Quantity</th>
+            <th>Unit Price</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var order in _orderList)
+        {
+            @foreach (var detail in order.OrderDetails)
+            {
+                <tr>
+                    <td class="col-4">@detail.ProductId</td>
+                    <td class="col-4">@detail.Quantity</td>
+                    <td class="col-4">@detail.UnitPrice</td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+@code {
+
+    [Parameter]
+    public string Id { get; set; }
+    private User? _loggedInUser;
+    private IEnumerable<Order> _orderList { get; set; } = new List<Order>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        GetUser();
+        await GetAllOrdersAsync();
+        StateHasChanged();
+    }
+
+    private void GetUser()
+    {
+        _loggedInUser = _userManager.GetUser();
+    }
+
+    private async Task GetAllOrdersAsync()
+    {
+        var result = await _httpClient.GetFromJsonAsync<ICollection<Order>>("api/Order");
+        _orderList = result is null ? new List<Order>() : result.Where(s => s.Id.ToString() == Id);
+    }
+}

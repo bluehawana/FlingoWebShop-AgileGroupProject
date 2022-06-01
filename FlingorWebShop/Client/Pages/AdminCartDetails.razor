@@ -1,0 +1,58 @@
+﻿@page "/cartdetails/{UserId}"
+@using System.Globalization
+
+@inject HttpClient _httpClient
+@inject CartManager _cartManager
+
+@attribute [Authorize(Roles = "Admin")]
+
+@if (_user is not null && _cart is not null)
+{
+    <h1>Active cart for user @_user.Email</h1>
+    <table class="table table-bordered">
+        <thead>
+        <tr>
+            <th class="col-1">Artnr</th>
+            <th class="col-6">Title</th>
+            <th class="col-1">Price</th>
+            <th class="col-2">Amount</th>
+            <th class="col-2 float-end me-5">Total</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var product in _cart.Products)
+        {
+            <tr>
+                <td>@product.Key.ArticleNumber</td>
+                <td>@product.Key.Title</td>
+                <td>@product.Key.Price.ToString("c", CultureInfo.GetCultureInfo("sv-SE"))</td>
+                <td>@product.Value</td>
+                <td class="float-end">
+                    @((product.Key.Price * product.Value).ToString("c", CultureInfo.GetCultureInfo("sv-SE")))
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    <p class="float-end">
+        Total cart value: @_cart.Products.Sum(p => p.Key.Price * p.Value).ToString("C", CultureInfo.GetCultureInfo("sv-SE"))
+    </p>
+    <NavLink class="btn btn-primary" href="activecarts">Back to Active Cart View</NavLink>
+}
+
+@code {
+    [Parameter]
+    public string? UserId { get; set; }
+
+    private User? _user;
+    private FlingorWebShop.Shared.Cart? _cart;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if(UserId is not null)
+            _user = await _httpClient.GetFromJsonAsync<User>($"api/User/{UserId}");
+
+        if(_user is not null)
+            _cart = await _cartManager.BuildCartAsync(await _httpClient.GetFromJsonAsync<List<ProductDto>>($"api/Cart/{UserId}"), _user.Id);
+    }
+}

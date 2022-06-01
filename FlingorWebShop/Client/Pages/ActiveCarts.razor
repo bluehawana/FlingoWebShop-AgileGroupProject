@@ -1,0 +1,46 @@
+﻿@page "/activecarts"
+@using System.Globalization
+
+@inject UserManager _userManager;
+@inject CartManager _cartManager;
+
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Active Carts</PageTitle>
+    <h1>Users with active carts</h1>
+    @if (_carts is not null)
+    {
+        <table class="table table-bordered">
+            <thead>
+            <tr>
+                <th class="col-4">User Id</th>
+                <th class="col-4">Product Amount</th>
+                <th class="col-4"></th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var cart in _carts)
+            {
+                <tr>
+                    <td>@cart.userId</td>
+                    <td>@cart.amount</td>
+                    <td>
+                        <a class="btn btn-primary float-end" href="/cartdetails/@cart.userId">
+                            View details
+                        </a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+
+
+@code {
+    private List<(int userId, int amount, decimal totalPrice)> _carts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _carts = await _cartManager.GetAllActiveCarts();
+    }
+}

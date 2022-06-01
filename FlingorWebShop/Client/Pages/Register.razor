@@ -1,0 +1,142 @@
+﻿@page "/register"
+@inject HttpClient _httpClient;
+@inject UserManager _userManager;
+@inject AuthenticationStateProvider _authStateProvider;
+@inject ILocalStorageService _localStorage;
+@using Microsoft.EntityFrameworkCore.ValueGeneration
+@using System.Net
+
+
+<Modal Title="Registration successful" IsOpened="_isModalOpened">
+    <ModalBody>
+        <h2>Thank you for registering!</h2>
+    </ModalBody>
+    <ModalFooter>
+        <a class="btn btn-primary" href="">Back to shop</a>
+    </ModalFooter>
+</Modal>
+
+<h3>Register new customer</h3>
+
+<form method="post" class="row g-3 pt-4" @onsubmit="() => RegisterUserAsync()">
+    <div class="row">
+        <div class="form-group col-6">
+            <label class="form-label" for="FirstName">First name</label>
+            <input @bind="_FirstName" class="form-control" placeholder="John" type="text" name="FirstName" required />
+        </div>
+        <div class="form-group col-6">
+            <label class="form-label" for="LastName">Last name</label>
+            <input @bind="_LastName" class="form-control" placeholder="Smith" type="text" name="LastName" required />
+        </div>
+        <div class="form-group col-6">
+            <label class="form-label" for="Email">Email</label>
+            <input @bind="_Email" class="form-control" placeholder="john.smith@example.com" type="email" name="Email" required />
+        </div>
+        <div class="form-group col-6">
+            <label class="form-label" for="Password">Password</label>
+            <input @bind="_Password" class="form-control" placeholder="password" type="password" name="Password" required />
+        </div>
+        <div class="form-group col-6">
+            <label class="form-label" for="Phone">Phone number</label>
+            <input @bind="_Phone" class="form-control" placeholder="Phone number" type="text" name="Phone" required />
+        </div>
+    </div>
+    <div class="row">
+        <div class="form-group col-6">
+            <label for="StreetName">Street name</label>
+            <input @bind="_StreetName" class="form-control" placeholder="Main Street" type="text" name="StreetName" required />
+        </div>
+        <div class="form-group col-6">
+            <label for="StreetNumber">Street number</label>
+            <input @bind="_StreetNumber" class="form-control" placeholder="5" type="text" name="StreetNumber" required />
+        </div>
+    </div>
+    <div class="row">
+        <div class="form-group col-6">
+            <label for="City">City</label>
+            <input @bind="_City" class="form-control" placeholder="New York" type="text" name="City" required />
+        </div>
+
+        <div class="form-group col-6">
+            <label for="State">State</label>
+            <input @bind="_State" class="form-control" placeholder="*optional*" type="text" name="State" />
+        </div>
+    </div>
+    <div class="row">
+        <div class="form-group col-6">
+            <label for="PostalCode">Postal code</label>
+            <input @bind="_PostalCode" class="form-control" placeholder="12345" type="text" name="PostalCode" required />
+        </div>
+
+        <div class="form-group col-6">
+            <label for="Country">Country</label>
+            <input @bind="_Country" class="form-control" placeholder="USA" type="text" name="Country" required />
+        </div>
+    </div>
+    <button class="btn btn-primary mt-2" type="submit">Submit</button>
+    <label class="text-danger">@_errorMessage</label>
+
+</form>
+
+
+@code {
+    private string _errorMessage = "";
+    private string _FirstName;
+    private string _LastName;
+    private string _Email;
+    private string _Password;
+    private string _Phone;
+    private string _StreetName;
+    private string _StreetNumber;
+    private string _City;
+    private string? _State;
+    private string _PostalCode;
+    private string _Country;
+    private bool _IsAdmin;
+
+    private bool _isModalOpened;
+    private bool _loginSuccess;
+
+    private async Task RegisterUserAsync()
+    {
+        var user = new User();
+
+        user.FirstName = _FirstName;
+        user.LastName = _LastName;
+        user.Email = _Email;
+        user.Password = _Password;
+        user.Phone = _Phone;
+        user.StreetName = _StreetName;
+        user.StreetNumber = _StreetNumber;
+        user.City = _City;
+        user.State = _State;
+        user.PostalCode = _PostalCode;
+        user.Country = _Country;
+        user.IsAdmin = false;
+        Console.WriteLine(user);
+
+        var registerResult = await _httpClient.PostAsJsonAsync("api/Auth/register", user);
+
+        if (registerResult.StatusCode == HttpStatusCode.BadRequest)
+        {
+            _errorMessage = "Email already registered.";
+        }
+        else
+        {
+            _errorMessage = "";
+            _isModalOpened = true;
+
+            var loginResult = await _httpClient.PostAsJsonAsync("api/auth/login", user);
+
+            if (loginResult.IsSuccessStatusCode)
+            {
+                _loginSuccess = true;
+                _userManager.SetUser(user);
+                _userManager.CheckLoggedInUser();
+            }
+            var token = await loginResult.Content.ReadAsStringAsync();
+            await _localStorage.SetItemAsync("token", token);
+            await _authStateProvider.GetAuthenticationStateAsync();
+        }
+    }
+}

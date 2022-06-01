@@ -1,0 +1,33 @@
+﻿<div class=" custom-modal @cssClass">
+    <div class="d-flex w-100 h-100">
+        <div class="custom-modal-content col-md-8 rounded-3 shadow align-self-center mx-auto text-white">
+            <div class="bg-primary text-center py-1">
+                <h1 class="display-6">
+                    @Title
+                </h1>
+            </div>
+            <div class="text-center my-3">
+                @ModalBody
+            </div>
+            <div class="bg-primary text-center py-2">
+                @ModalFooter
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public RenderFragment ModalBody { get; set; }
+
+    [Parameter]
+    public RenderFragment ModalFooter { get; set; }
+
+    [Parameter]
+    public bool IsOpened { get; set; }
+
+    public string cssClass => IsOpened ? "show" : "hide";
+}
